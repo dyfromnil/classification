@@ -1,8 +1,9 @@
 data文件夹下面：
     vip_0.csv  负样本名单
-    vip_1 .csv 正样本名单 上次
+    vip_1 .csv 正样本名单 上次（包含在其他账号开通了的）
     new_vip_list.csv 正样本名单 最新（用于验证）
     new_add.csv  计算: new_data - vip_1 即相较于上次新增的vip供应商名单
+    other.csv  其他各种原因不开通的名单，不做了，公司被收购了
 
 dataDump文件夹下面：
     vip_data.csv  所有的正、负样本及其信息   信息有：[ 'name','label', 'attach_count', 'type', 'fund', 'service_average', 'instock_service', 'instock_product', 'instock_deliverspeed', 'win', 'price','tender', 'se_tender', 'bidconcern', 'se_bidconcern', 'login', 'se_login', 'integrity', 'contract_rate', 'instock_honesty', 'years']

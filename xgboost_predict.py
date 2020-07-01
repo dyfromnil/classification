@@ -32,6 +32,10 @@ all_supplier = all_supplier[~all_supplier['name'].isin(
 strategy = pd.read_csv('./data/strategy.csv')
 all_supplier = all_supplier[~all_supplier['name'].isin(
     strategy['name'])].reset_index(drop=True)
+# 除去因各种其他原因不开通的供应商
+other = pd.read_csv('./data/other.csv')
+all_supplier = all_supplier[~all_supplier['name'].isin(
+    other['name'])].reset_index(drop=True)
 
 # 最后两列是注册和审核时间，用于计算已经成为平台用户的时长
 time_all = computeTime(all_supplier.iloc[:, -2:])
@@ -130,6 +134,7 @@ pre_positive.to_csv('./dataResult/pre_positive.csv', index=False)
 pre_positive_sort = pre_positive.sort_values(
     'probability', ascending=False).reset_index(drop=True)
 pre_positive_sort.to_csv('./dataResult/pre_positive_sort.csv', index=False)
+# pre_positive_sort.iloc[:1000].to_csv('./dataResult/pre_positive_sort.csv', index=False)
 
 # 相较于上次统计，新增的VIP供应商
 # 训练用的正负样本
