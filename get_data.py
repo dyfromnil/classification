@@ -61,10 +61,10 @@ data_pay = pd.DataFrame([data for data in getdata(data_pay, 1)])
 data_refuse = pd.DataFrame([data for data in getdata(data_refuse, 0)])
 
 # 计算注册时长
-time = computeTime(data_pay.iloc[:, 20:])
-data_pay = pd.concat([data_pay.iloc[:, 0:20], time], axis=1)
-time = computeTime(data_refuse.iloc[:, 20:])
-data_refuse = pd.concat([data_refuse.iloc[:, 0:20], time], axis=1)
+time = computeTime(data_pay.iloc[:, -2:])
+data_pay = pd.concat([data_pay.iloc[:, 0:-2], time], axis=1)
+time = computeTime(data_refuse.iloc[:, -2:])
+data_refuse = pd.concat([data_refuse.iloc[:, 0:-2], time], axis=1)
 
 # 改列名
 data_pay.columns = ['name', 'label', 'attach_count', 'type', 'fund', 'service_average', 'instock_service', 'instock_product', 'instock_deliverspeed', 'win', 'price',

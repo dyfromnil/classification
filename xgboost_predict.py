@@ -157,7 +157,7 @@ reverse_vip = new_add_vip[new_add_vip['name'].isin(
 new_add_vip_delReverse = new_add_vip[~new_add_vip['name'].isin(
     vip_0['name'])].reset_index(drop=True)
 
-# new_add_vip_delReverse中的新(years>0.25)供应商&老供应商(years<0.25)&不在数据库里的供应商
+# new_add_vip_delReverse中的新(years<0.25)供应商&老供应商(years>0.25)&不在数据库里的供应商
 new_add_vip_delReverse_new = new_add_vip_delReverse[new_add_vip_delReverse['name'].isin(
     new_supplier['name'])].reset_index(drop=True)
 new_add_vip_delReverse_old = new_add_vip_delReverse[new_add_vip_delReverse['name'].isin(
