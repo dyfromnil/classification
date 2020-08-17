@@ -3,12 +3,18 @@ from utils import readDataFromMysql
 
 from datetime import datetime
 from sklearn import preprocessing
-from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
+from sklearn.metrics import make_scorer, roc_auc_score, accuracy_score
+from sklearn.linear_model import LogisticRegression
 
 import numpy as np
 import pandas as pd
 import xgboost as xgb
 import os
+import matplotlib.pyplot as plt
+
 os.environ["PATH"] += os.pathsep + 'D://Graphviz2.38/bin/'
 
 # test_size
@@ -50,54 +56,112 @@ data = np.array(data_df.loc[:, 'attach_count':])
 # 负样本数/正样本数
 scale_pos_weight = len(labels[labels == 0])/len(labels[labels == 1])
 
-dataset_train, dataset_test, label_train, label_test = train_test_split(
-    data, labels, test_size=ts)
+# dataset_train, dataset_test, dataset_train, label_test = train_test_split(
+#     data, labels, test_size=ts)
 
-dtrain = xgb.DMatrix(dataset_train, label=label_train)
-dtest = xgb.DMatrix(dataset_test, label=label_test)
+dataset_train, label_train = data, labels
 
-# data_size = data_df.shape[0]
-# train_size = dataset_train.shape[0]
-# test_size = dataset_test.shape[0]
+# 特征名
+feature_names = data_df.columns.to_list()
+feature_names = feature_names[feature_names.index('attach_count'):]
 
-params = {
-    'booster': 'gbtree',
-    # 'objective': 'multi:softmax',  # 多分类的问题
-    # 'num_class': 10,               # 类别数，与 multisoftmax 并用
-    'objective': 'binary:logistic',
-    'gamma': 0.1,                  # 用于控制是否后剪枝的参数,越大越保守，一般0.1、0.2这样子。
-    'max_depth': 20,               # 构建树的深度，越大越容易过拟合
-    'lambda': 2,                   # 控制模型复杂度的权重值的L2正则化项参数，参数越大，模型越不容易过拟合。
-    'subsample': 0.7,              # 随机采样训练样本
-    'colsample_bytree': 0.7,       # 生成树时进行的列采样
-    'min_child_weight': 3,
-    # 'silent': 0,                   # 设置成1则没有运行信息输出，最好是设置为0.
-    'eta': 0.2,                  # 如同学习率
-    'seed': 1000,
-    'nthread': 4,                  # cpu 线程数
-    'scale_pos_weight': scale_pos_weight
+# 网格搜索参数
+cv_params = {
+    'n_estimators': range(10, 50, 4),
+    'gamma': np.linspace(0.1, 2, 20),     # 用于控制是否后剪枝的参数,越大越保守，一般0.1、0.2这样子。
+    'max_depth': range(10, 50, 2),               # 构建树的深度，越大越容易过拟合
+    # 控制模型复杂度的权重值的L2正则化项参数，参数越大，模型越不容易过拟合。
+    'lambda': np.linspace(0.1, 4, 40),
+    'subsample': np.linspace(0.72, 0.9, 10),              # 随机采样训练样本
+    'colsample_bytree': np.linspace(0.73, 1, 10),       # 生成树时进行的列采样
+    'min_child_weight': range(1, 5),
+    # 'silent': 1,                   # 设置成1则没有运行信息输出，最好是设置为0.
+    'learning_rate': np.linspace(0.01, 1, 100),                  # 如同学习率
 }
 
-params['eval_metric'] = ['error', 'auc']
+# 固定参数
+other_params = {
+    'seed': 1000,
+    'scale_pos_weight': scale_pos_weight,
+    'early_stopping_rounds': 5,
+    'objective': 'binary:logistic',
+}
 
-evallist = [(dtrain, 'train'), (dtest, 'eval')]
+# xgboost训练
+model = xgb.XGBClassifier(**other_params)
 
-num_round = 30
-bst = xgb.train(params, dtrain, num_round, evallist, early_stopping_rounds=5)
+scoring = {
+    'acc': make_scorer(accuracy_score),
+    'roc_auc': make_scorer(roc_auc_score)
+}
+# grid = GridSearchCV(model, cv_params, cv=5, refit='acc',
+#                     scoring=scoring, n_jobs=-1)
 
-bst.save_model('./model/xgb1.model')
-# 转存模型
-bst.dump_model('./model/dump.raw.txt')
-# 转储模型和特征映射
-bst.dump_model('./model/dump.raw.txt', './model/featmap.txt')
+grid = RandomizedSearchCV(model, cv_params, cv=5, refit='acc', n_iter=300,
+                          scoring=scoring, n_jobs=-1)
 
-xgb.plot_importance(bst)
+grid.fit(dataset_train, label_train)
+best_estimator = grid.best_estimator_
+# grid.cv_results_
+
+# 水平柱状图
+importance_dict = {
+    'features': feature_names,
+    'importance': best_estimator.feature_importances_
+}
+importance = pd.DataFrame(importance_dict)
+importance = importance.sort_values(
+    'importance').reset_index(drop=True)
+importance = importance[~(importance['importance'] == 0)]
+
+fig, ax = plt.subplots()
+ax.barh(range(len(importance)),
+        importance['importance'], tick_label=importance['features'])
+ax.set_xlabel('importance', color='k')
+ax.set_ylabel('features', color='k')
+plt.title('features importance', loc='center', fontsize='15', color='red')
+for x, y in enumerate(importance['importance']):
+    ax.text(y+0.005, x, round(y, 4), va='center')
+plt.show()
+
 # xgb.plot_tree(bst, num_trees=5)
-# xgb.to_graphviz(bst, num_trees=10)
+# xgb.to_graphviz(best_estimator, num_trees=10)
+
+# 编码为onehot向量
+enc = OneHotEncoder()
+enc.fit(best_estimator.apply(dataset_train))
+
+oh_train = enc.transform(best_estimator.apply(dataset_train)).toarray()
+oh_pre = enc.transform(best_estimator.apply(pre_data)).toarray()
+
+# 所有特征:onehot向量+原特征向量 --> lr模型训练使用
+lr_train = np.hstack([oh_train, dataset_train])
+lr_pre = np.hstack([oh_pre, pre_data])
+
+# lr固定参数
+lr_other_params = {
+    'penalty': 'l2',
+    'class_weight': 'balanced',
+    'n_jobs': -1
+}
+LR = LogisticRegression(**lr_other_params)
+
+# lr超参搜索
+lr_cv_params = {
+    'C': np.linspace(0.1, 6, 60),
+    'max_iter': np.linspace(50, 1000, 20),
+}
+
+grid_lr = RandomizedSearchCV(LR, lr_cv_params, cv=5, refit='acc', n_iter=300,
+                             scoring=scoring, n_jobs=-1)
+grid_lr.fit(lr_train, label_train)
+
+lr_best_estimator = grid_lr.best_estimator_
+
+# 预测类别为1的概率
+probability = lr_best_estimator.predict_proba(lr_pre)[:, 1]
 
 # ------------- 老供应商 ----------------
-pre_data_DMatrix = xgb.DMatrix(pre_data)
-probability = bst.predict(pre_data_DMatrix, ntree_limit=bst.best_ntree_limit)
 probability = pd.DataFrame(probability)
 probability.columns = ['probability']
 pre_result = pd.concat([name_province, probability], axis=1)
@@ -147,4 +211,4 @@ other_region.to_csv('./dataResult/其余地区.csv', index=False)
 
 result = pd.read_csv('./dataResult/total.csv')
 tmp = pd.read_csv('./tmp.csv')
-result=result[~result['name'].isin(tmp['name'])]
+result = result[~result['name'].isin(tmp['name'])]
