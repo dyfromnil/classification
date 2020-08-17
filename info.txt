@@ -1,3 +1,5 @@
+每次分析数据，没中的并且也没查到的，看看是否在other里面，是否在vip0里面，都排除了说明是数据库更新的问题
+
 data文件夹下面：
     vip_0.csv  负样本名单
     vip_1 .csv 正样本名单 上次（包含在其他账号开通了的）
@@ -6,9 +8,9 @@ data文件夹下面：
     other.csv  其他各种原因不开通的名单，不做了，公司被收购了
 
 dataDump文件夹下面：
-    vip_data.csv  所有的正、负样本及其信息   信息有：[ 'name','label', 'attach_count', 'type', 'fund', 'service_average', 'instock_service', 'instock_product', 'instock_deliverspeed', 'win', 'price','tender', 'se_tender', 'bidconcern', 'se_bidconcern', 'login', 'se_login', 'integrity', 'contract_rate', 'instock_honesty', 'years']
-    vip_new_supplier.csv  注册3个月以内的且开通了VIP的新供应商
-    unfound.csv  没有查到的供应商（应该是新供应商）
+    vip_data.csv  总样本中的老供应商（包含正负样本）
+    vip_new_supplier.csv  总样本中的新供应商（包含正负样本）
+    pre_data.csv  所有用于预测的供应商数据
 
 dataResult文件夹下面：
     pre_positive.csv 所有预测概率大于0.5的供应商
@@ -17,16 +19,9 @@ dataResult文件夹下面：
     长三角地区.csv 其余地区.csv 两个地方的top100（共200个，不含top50里的，即50-250的）
     total.csv 历次的预测总名单（每次预测中有重复的）
     not_in_info.csv 新增的VIP供应商不在预测为正样本的供应商名单里的，他们的信息
-    
-
-
-get_data.py 从vip_0.csv和vip_1 .csv中获取所有的正负样本的名单，从数据库读取他们的数据，然后保存到vip_data.csv
-
-data_analyse.py 最新数据统计新增的VIP供应商在历次总预测名单里面的有多少，迄今为止我们真实预测出的VIP有多少
+    days.csv 新（3个月以内）且开通VIP的供应商开通时间分布
 
 probability.py 
     计算top50.csv，长三角地区.csv，其余地区.csv
     not_in_info.csv 预测错的供应商（充了，但预测为不充）信息
     in_info.csv 预测正确的供应商信息
-
-test_data.py 是get_data.py的3分类测试版

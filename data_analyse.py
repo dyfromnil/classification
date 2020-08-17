@@ -30,3 +30,37 @@ vip3[vip3['name'].isin(pre2['name'])].reset_index(drop=True)
 top1000 = pd.read_csv("data_test/pre_positive_sort.csv")
 vip1[vip1['name'].isin(top1000['name'])].reset_index(drop=True)
 vip2[vip2['name'].isin(top1000['name'])].reset_index(drop=True)
+
+last = pd.read_csv('data/last.csv', sep='\t')
+this = pre_positive[~pre_positive['name'].isin(
+    last['name'])].reset_index(drop=True)
+this = this.sort_values('probability', ascending=False).reset_index(drop=True)
+this.iloc[:230, :].to_csv('./pre.csv', index=None)
+
+
+new_add = pd.read_csv('data/new_add.csv')
+new_add_new_supplier = new_supplier[new_supplier['name'].isin(
+    new_add['name'])].reset_index(drop=True)
+new_add_old_supplier = old_supplier[old_supplier['name'].isin(
+    new_add['name'])].reset_index(drop=True)
+
+all_supplier[all_supplier['name'].isin(
+    new_add['name'])].reset_index(drop=True)
+
+total = pd.read_csv('dataResult/total.csv')
+this = pd.read_csv('dataResult/this.csv')
+
+xy = new_add_old_supplier[new_add_old_supplier['name'].isin(
+    total['name'])].reset_index(drop=True)
+
+new_add_old_supplier[new_add_old_supplier['name'].isin(
+    this['name'])].reset_index(drop=True)
+
+data_refuse = pd.read_csv("./data/vip_0.csv")
+data_refuse = data_refuse.drop_duplicates()
+
+xy[xy['name'].isin(
+    data_refuse['name'])].reset_index(drop=True)
+
+new = pd.read_csv("./dataDump/vip_new_supplier.csv")
+data_df[data_df['name'].isin(old_supplier['name'])].reset_index(drop=True)
