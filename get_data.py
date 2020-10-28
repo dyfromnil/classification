@@ -3,23 +3,7 @@ import numpy as np
 import pymysql
 from datetime import datetime
 from utils import readDataFromMysql
-
-
-def computeTime(rc_time):
-    time_init = datetime(2015, 4, 8)
-    endTime = datetime.today()
-
-    rc_time.columns = ['regchecktime', 'createtime']
-    rc_time.loc[rc_time['regchecktime'] ==
-                '0000-00-00 00:00:00', 'regchecktime'] = time_init
-    rc_time.loc[rc_time['createtime'] ==
-                '0000-00-00 00:00:00', 'createtime'] = time_init
-
-    time = pd.DataFrame(rc_time.max(axis=1))
-    days = (endTime-time).apply(lambda x: x[0].days, axis=1)
-    years = np.array(days)/365
-
-    return pd.DataFrame(years)
+from utils import computeTime
 
 
 # zjc_supplier和zjc_supplier_param中的维度
@@ -38,7 +22,7 @@ vip_spot.columns = ['company_id', 'name', 'operator_type', 'operate_num']
 # VIP埋点数据转化为8个不同埋点维度和总共操作数维度
 all_supplier_columns = all_supplier.columns.to_list()
 vip_spot_columns = ['type1', 'type2', 'type3', 'type4',
-                    'type5', 'type6', 'type7', 'type8', 'operate_total']
+                    'type5', 'type6', 'type7', 'type8', 'type9', 'operate_total']
 
 all_supplier_columns[-2:-2] = vip_spot_columns
 all_supplier = all_supplier.reindex(columns=all_supplier_columns)
@@ -61,7 +45,7 @@ for row in vip_spot_in_all.itertuples():
 
 # 计算total
 all_supplier['operate_total'] = all_supplier.loc[:,
-                                                 'type1':"type8"].sum(axis=1)
+                                                 'type1':"type9"].sum(axis=1)
 
 # 恢复索引
 all_supplier = all_supplier.reset_index(drop=False)
@@ -74,9 +58,17 @@ time.columns = ['years']
 all_supplier = pd.concat([all_supplier.iloc[:, 0:-2], time], axis=1)
 
 
+# vip埋点数据只取总点击数
+all_supplier.drop(['type1', 'type2', 'type3', 'type4',
+                   'type5', 'type6', 'type7', 'type8', 'type9'], axis=1, inplace=True)
+
 # 读取正负样本名单
+# sql = 'select name from zjc_supplier where vip_level=3'
+# pay = readDataFromMysql(sql)
+# pay.columns = ['name']
 pay = pd.read_csv("./data/vip_1.csv")
 pay = pay.drop_duplicates()
+pay.to_csv('./data/vip_1.csv', index=False)
 refuse = pd.read_csv("./data/vip_0.csv")
 refuse = refuse.drop_duplicates()
 
@@ -99,7 +91,7 @@ sample_data = pd.concat([data_pay, data_refuse]).reset_index(drop=True)
 
 # 添加标签
 sample_data.insert(2, 'label', 1)
-sample_data.iloc[len(pay):, 2] = 0
+sample_data.iloc[len(data_pay):, 2] = 0
 
 # 总样本中的新供应商（包含正负样本）
 vip_new_supplier = sample_data.query('years<0.25')
@@ -115,7 +107,9 @@ vip_data.to_csv('./dataDump/vip_data.csv', index=False)
 all_supplier = all_supplier[~all_supplier['name'].isin(
     sample_data['name'])].reset_index(drop=True)
 # 去除战略供应商
-strategy = pd.read_csv('./data/strategy.csv')
+# strategy = pd.read_csv('./data/strategy.csv')
+strategy = readDataFromMysql('select name from zjc_supplier where is_mvp=1')
+strategy.columns = ['name']
 all_supplier = all_supplier[~all_supplier['name'].isin(
     strategy['name'])].reset_index(drop=True)
 # 除去因各种其他原因不开通的供应商
